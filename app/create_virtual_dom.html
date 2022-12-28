@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="root">
+    <div class="body">
+      <div class="first" title="hello1">hello1</div>
+      <div>hello2</div>
+      <div>hello3</div>
+      <ul>
+        <li>1</li>
+        <li>2</li>
+        <li>3</li>
+      </ul>
+    </div>
+  </div>
+</body>
+<script>
+  // 为什么要用虚拟dom？ 性能
+  // <div /> => { tag: 'div' }
+  // <div class="c" title="1" /> => { tag: 'div', data: { class: 'c', title: '1' } }
+  // 文本节点 => { tag: 'undefined', value: '文本节点' }
+  // <div><div /></div> => { tag: 'div', children: [{ tag: 'div' }] }
+
+  // 虚拟dom实际上就是用一个js对象来描述dom，故首先可定义一个js类
+  class vNode {
+    constructor(tag, value, type, data) {
+      this.tag = tag && tag.toLowerCase();
+      this.value = value;
+      this.type = type;
+      this.data = data;
+      this.children = [];
+    }
+
+    appendChild(node) {
+      this.children.push(node);
+    }
+  }
+
+  // 使用递归 来遍历dom元素 生成虚拟dom
+  function getVNode(node) {
+    const nodeType = node.nodeType;
+    let _vnode = null; 
+    if (nodeType === 1) {
+      // 元素
+      const nodeName = node.nodeName;
+      const attrs = node.attributes; // 伪数组
+      const attrsObj = Array.from(attrs).reduce((obj, item) => { // item 属性节点 nodeType == 2
+        obj[item.nodeName] = item.nodeValue;
+        return obj;
+      }, {});
+      _vnode = new vNode(nodeName, undefined, nodeType, attrsObj);
+      // 考虑node的子元素
+      const childNodes = node.childNodes;
+      for (const child of childNodes) {
+        _vnode.appendChild(getVNode(child)); // 递归
+      }
+    } else if (nodeType === 3) {
+      _vnode = new vNode(undefined, node.nodeValue, nodeType, undefined);
+    }
+
+    return _vnode;
+  }
+
+  const root = document.querySelector('#root');
+  const vroot = getVNode(root);
+  console.log(vroot);
+
+  // 将虚拟dom 转换成真正的dom
+  function parseVNode(vnode) {
+    const nodeType = vnode.type;
+    let dom = null;
+    if (nodeType === 1) {
+      // 元素
+      dom = document.createElement(vnode.tag);
+
+      // 属性
+      const attrsObj = vnode.data;
+      for (key in attrsObj) {
+        dom.setAttribute(key, attrsObj[key]);
+      }
+      // 子元素
+      const childNodes = vnode.children;
+      for (const child of childNodes) {
+        dom.appendChild(parseVNode(child));
+      }
+    } else if (nodeType === 3) {
+      // 文本
+      dom = document.createTextNode(vnode.value);
+    }
+
+    return dom;
+  }
+
+  const dom = parseVNode(vroot);
+  console.log(dom);
+</script>
+</html>

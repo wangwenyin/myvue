@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="root">
+    <p>{{name}}</p>
+    <p>{{job}}</p>
+  </div>
+</body>
+<script>
+  // 代码整合
+  const rkuohao = /\{\{(.+?)\}\}/g;
+  function complier(template, data) {
+    const childNodes = template.childNodes;
+    for (let i = 0; i < childNodes.length; i++) {
+      const type = childNodes[i].nodeType; // 1 元素 3 文本
+      if (type === 3) {
+        let txt = childNodes[i].nodeValue;
+        txt = txt.replace(rkuohao, (_, g) => {
+          const key = g.trim();
+          const value = data[key];
+          return value;
+        })
+        childNodes[i].nodeValue = txt;
+      } else if (type === 1) {
+        complier(childNodes[i], data);
+      }
+    }
+  }
+  function myvue(options) {
+    this._el = options.el;
+    this._data = options.data;
+    this._tempDom = document.querySelector('#root');
+    this._parent = this._tempDom.parentNode;
+    this.render();
+  }
+  myvue.prototype.render = function() {
+    this.complier();
+  }
+  myvue.prototype.complier = function() {
+    const renderDom = this._tempDom.cloneNode(true);
+    complier(renderDom, this._data);
+    this.update(renderDom);
+  }
+  myvue.prototype.update = function(dom) {
+    this._parent.replaceChild(dom, this._tempDom);
+  }
+  const app = new myvue({
+    el: '#root',
+    data: {
+      name: 'wang',
+      job: 'enjner'
+    }
+  })
+</script>
+</html>

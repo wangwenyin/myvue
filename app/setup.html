@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="root">
+    <p>{{name}}</p>
+    <p>{{job}}</p>
+  </div>
+</body>
+<!-- <script src="vue/dist/vue.min.js"></script> -->
+<script>
+  // const app = new Vue({
+  //   el: '#root',
+  //   data() {
+  //     return {
+  //       name: 'wang',
+  //       job: 'enjner'
+  //     }
+  //   }
+  // })
+  const rkuohao = /\{\{(.+?)\}\}/g;
+  const data = {
+    name: 'wang',
+    job: 'enjner'
+  }
+  const tempNode = document.querySelector('#root');
+  console.log(root); // 插值形式
+  function complier(template, data) {
+    const childNodes = template.childNodes;
+    for (let i = 0; i < childNodes.length; i++) {
+      const type = childNodes[i].nodeType; // 1 元素 3 文本
+      if (type === 3) {
+        let txt = childNodes[i].nodeValue;
+        txt = txt.replace(rkuohao, (_, g) => {
+          const key = g.trim();
+          const value = data[key];
+          return value;
+        })
+        childNodes[i].nodeValue = txt;
+      } else if (type === 1) {
+        complier(childNodes[i], data);
+      }
+    }
+  }
+  const template = tempNode.cloneNode(true);
+  complier(template, data);
+  tempNode.parentNode.replaceChild(template, tempNode);
+  console.log(root); // 渲染后的形式
+
+  // 上面的思路还有很大的问题：
+  // 1、vue使用的是虚拟dom
+  // 2、只考虑了单层属性
+  // 3、代码没有整合
+</script>
+</html>
