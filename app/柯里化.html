@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+// 1. 科里化: 一个函数原本有多个参数, 之传入**一个**参数, 生成一个新函数, 由新函数接收剩下的参数来运行得到结构.
+// 2. 高阶函数: 一个函数**参数是一个函数**, 该函数对参数这个函数进行加工, 得到一个函数, 这个加工用的函数就是高阶函数.
+
+// 为什么要使用科里化? 为了提升性能. 使用科里化可以缓存一部分能力.
+
+// 使用两个案例来说明：
+// 1、判断元素
+// 2、虚拟DOM的 render方法
+  const tags = 'div,p,ul,li,img,a'.split(',');
+
+  function makeMap(tags) {
+    const set = {};
+    tags.forEach(tag => set[tag] = true);
+    return function(tagName) {
+      return !!set[tagName.toLowerCase()];
+    }
+  }
+
+  const isHtmlTag = makeMap(tags);
+  console.log(isHtmlTag('ll'));
+</script>
+</html>
