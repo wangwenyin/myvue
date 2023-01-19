@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+  const o = {
+    name: 'wang',
+    age: 18,
+    course: [ // 将复杂对象属性响应式话需要用到递归
+      // { name: '数学' },
+      // { name: '语文' },
+      // { name: '英语' },
+      '123'
+    ]
+  }
+  function defineReactive(target, key, value, enumerable) {
+    Object.defineProperty(target, key, {
+      configurable: true,
+      enumerable: !!enumerable,
+      get() {
+        console.log(`读取o的属性 ${key}`)
+        return value;
+      },
+      set(newValue) {
+        console.log(`设置o的属性 ${key} 为${newValue}`)
+        value = newValue;
+      }
+    })
+  }
+
+  function reactify(o) {
+    const keys = Object.keys(o);
+    for (const key of keys) {
+      const value = o[key];
+      // 判断value是否是引用类型（数组：遍历后再判读类型）
+      debugger
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          reactify(item)
+        }
+      } else {
+        // 对象或值类型
+        if (typeof value === 'object' && value !== null) {
+          reactify(value);
+        } else {
+          defineReactive(o, key, value, true);
+        }
+      }
+    }
+  }
+  reactify(o);
+</script>
+</html>
