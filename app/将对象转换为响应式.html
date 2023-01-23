@@ -14,12 +14,36 @@
     name: 'wang',
     age: 18,
     course: [ // 将复杂对象属性响应式话需要用到递归
-      // { name: '数学' },
-      // { name: '语文' },
-      // { name: '英语' },
-      '123'
+      { name: '数学' },
+      { name: '语文' },
+      { name: '英语' },
     ]
   }
+
+  const ARRAY_METHOD = [
+      'push',
+      'pop',
+      'shift',
+      'unshift',
+      'reverse',
+      'sort',
+      'splice',
+    ];
+
+  const array_method = Object.create(Array.prototype);
+  ARRAY_METHOD.forEach(METHOD => {
+    array_method[METHOD] = function() {
+      console.log(`调用的拦截的${METHOD}方法`);
+      // 将数据进行响应式话
+      for (const item of arguments) {
+        reactify(item);
+      }
+      // 再调用原来的方法
+      const res = Array.prototype[METHOD].apply(this, arguments);
+      return res;
+    }
+  })
+
   function defineReactive(target, key, value, enumerable) {
     Object.defineProperty(target, key, {
       configurable: true,
@@ -40,8 +64,8 @@
     for (const key of keys) {
       const value = o[key];
       // 判断value是否是引用类型（数组：遍历后再判读类型）
-      debugger
       if (Array.isArray(value)) {
+        value.__proto__ = array_method;
         for (const item of value) {
           reactify(item)
         }
