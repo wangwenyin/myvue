@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="root">
+    <div class="body">
+      <div class="first" title="hello1">{{ name.lastName }}</div>
+      <div>{{ age }}</div>
+      <ul>
+        <li>1</li>
+        <li>2</li>
+        <li>3</li>
+      </ul>
+    </div>
+  </div>
+</body>
+<script>
+  const ARRAY_METHOD = [
+    'push',
+    'pop',
+    'shift',
+    'unshift',
+    'reverse',
+    'sort',
+    'splice',
+  ];
+  const array_method = Object.create(Array.prototype);
+
+  ARRAY_METHOD.forEach(METHOD => {
+    array_method[METHOD] = function() {
+      console.log(`调用的拦截的${METHOD}方法`);
+      // 将数据进行响应式话
+      for (const item of arguments) {
+        reactify(item);
+      }
+      // 再调用原来的方法
+      const res = Array.prototype[METHOD].apply(this, arguments);
+      return res;
+    }
+  })
+
+  function defineReactive(target, key, value, enumerable) {
+    const that = this;
+    Object.defineProperty(target, key, {
+      configurable: true,
+      enumerable: !!enumerable,
+      get() {
+        console.log(`读取o的属性 ${key}`)
+        return value;
+      },
+      set(newValue) {
+        console.log(`设置o的属性 ${key} 为${newValue}`)
+        value = newValue;
+        that.mountComponent();
+      }
+    })
+  }
+
+  function reactify(o, vm) {
+    const keys = Object.keys(o);
+    for (const key of keys) {
+      const value = o[key];
+      // 判断value是否是引用类型（数组：遍历后再判读类型）
+      if (Array.isArray(value)) {
+        value.__proto__ = array_method;
+        for (const item of value) {
+          reactify(item, vm)
+        }
+      } else {
+        // 对象或值类型
+        if (typeof value === 'object' && value !== null) {
+          reactify(value, vm);
+        } else {
+          defineReactive.call(vm, o, key, value, true);
+        }
+      }
+    }
+  }
+
+  /** 虚拟 DOM 构造函数 */
+  class vNode {
+    constructor(tag, value, type, data) {
+      this.tag = tag && tag.toLowerCase();
+      this.value = value;
+      this.type = type;
+      this.data = data;
+      this.children = [];
+    }
+
+    appendChild(node) {
+      this.children.push(node);
+    }
+  }
+
+  const rkuohao = /\{\{(.+?)\}\}/g;
+  // 多层属性处理
+  function getValueByPath(obj, path) {
+    const paths = path.split('.');
+    let res = obj;
+    let prop;
+    // 此处while很巧妙
+    while(prop = paths.shift()) { // 即while(prop)
+      res = res[prop];
+    }
+    return res;
+  }
+
+  // 使用递归 来遍历dom元素 生成虚拟dom
+  function getVNode(node) {
+    const nodeType = node.nodeType;
+    let _vnode = null; 
+    if (nodeType === 1) {
+      // 元素
+      const nodeName = node.nodeName;
+      const attrs = node.attributes; // 伪数组
+      const attrsObj = Array.from(attrs).reduce((obj, item) => { // item 属性节点 nodeType == 2
+        obj[item.nodeName] = item.nodeValue;
+        return obj;
+      }, {});
+      _vnode = new vNode(nodeName, undefined, nodeType, attrsObj);
+      // 考虑node的子元素
+      const childNodes = node.childNodes;
+      for (const child of childNodes) {
+        _vnode.appendChild(getVNode(child)); // 递归
+      }
+    } else if (nodeType === 3) {
+      _vnode = new vNode(undefined, node.nodeValue, nodeType, undefined);
+    }
+
+    return _vnode;
+  }
+
+  // 将虚拟dom 转换成真正的dom
+  function parseVNode(vnode) {
+    const nodeType = vnode.type;
+    let dom = null;
+    if (nodeType === 1) {
+      // 元素
+      dom = document.createElement(vnode.tag);
+
+      // 属性
+      const attrsObj = vnode.data;
+      for (key in attrsObj) {
+        dom.setAttribute(key, attrsObj[key]);
+      }
+      // 子元素
+      const childNodes = vnode.children;
+      for (const child of childNodes) {
+        dom.appendChild(parseVNode(child));
+      }
+    } else if (nodeType === 3) {
+      // 文本
+      dom = document.createTextNode(vnode.value);
+    }
+
+    return dom;
+  }
+
+  /** 将 带有 坑的 Vnode 与数据 data 结合, 得到 填充数据的 VNode: 模拟 AST -> VNode */
+  function combine(vnode, data) {
+    let { type: _type, tag: _tag, value: _value, data: _data, children: _children } = vnode;
+    let _vnode = null;
+    if (_type === 3) {
+      // 文本节点
+      _value = _value.replace(rkuohao, (_, g) => {
+        return getValueByPath(data, g.trim());
+      })
+      _vnode = new vNode(_tag, _value, _type, _data);
+    } else if (_type === 1) {
+      // 元素节点
+      _vnode = new vNode(_tag, _value, _type, _data);
+      _children.forEach(_subVnode => _vnode.appendChild(combine(_subVnode, data)));
+    }
+    return _vnode;
+  }
+  function Myvue(options) {
+    this._data = options.data;
+    this._template = document.querySelector(options.el);
+    this._parent = this._template.parentNode;
+    // 临时方法处理myvue的响应式
+    reactify(this._data, this);
+    this.mount();
+  }
+  Myvue.prototype.mount = function() {
+    this.render = this.createRenderFn();
+    this.mountComponent();
+  }
+
+  Myvue.prototype.mountComponent = function() {
+    const mount = () => {
+      this.update(this.render());
+    }
+    mount();// 后续会交给watcher来调用
+  }
+
+  // 这里是生成 render 函数, 目的是缓存 抽象语法树 ( 我们使用 虚拟 DOM 来模拟 )
+  Myvue.prototype.createRenderFn = function() {
+    const ast = getVNode(this._template); // 带坑的vnode
+    return function render() {
+      const _tmp = combine(ast, this._data);
+      return _tmp;
+    }
+  }
+
+  // 将虚拟 DOM 渲染到页面中: diff 算法就在里
+  Myvue.prototype.update = function(vnode) {
+    const realDom = parseVNode(vnode);
+    this._parent.replaceChild(realDom, document.querySelector('#root'));
+  }
+  const app = new Myvue({
+    el: '#root',
+    data: {
+      name: {
+        firstName: 'wang',
+        lastName: 'wenyin'
+      },
+      age: 18
+    }
+  })
+</script>
+</html>
