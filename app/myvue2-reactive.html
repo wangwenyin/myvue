@@ -178,13 +178,43 @@
     }
     return _vnode;
   }
+  /** 将 某一个对象的属性 访问 映射到 对象的某一个属性成员上 */
+  function proxy(target, prop, key) {
+    Object.defineProperty(target, key, {
+      enumerable: true,
+      configurable: true,
+      get() {
+        return target[prop][key];
+      },
+      set(newVal) {
+        target[prop][key] = newVal;
+      }
+    });
+  }
   function Myvue(options) {
     this._data = options.data;
     this._template = document.querySelector(options.el);
     this._parent = this._template.parentNode;
+
+    this.initData(); // 将 data 进行响应式转换, 并进行代理
+    
+    this.mount();
+  }
+  Myvue.prototype.initData = function () {
+    // 遍历 this._data 的成员, 将 属性转换为响应式 ( 上 ), 将 直接属性, 代理到 实例上
+    let keys = Object.keys(this._data);
+
     // 临时方法处理myvue的响应式
     reactify(this._data, this);
-    this.mount();
+
+    // 代理
+    for (let i = 0; i < keys.length; i++) {
+      // 将 this._data[ keys[ i ] ] 映射到 this[ keys[ i ] ] 上
+      // 就是要 让 this 提供 keys[ i ] 这个属性
+      // 在访问这个属性的时候 相当于在 访文this._data 的这个属性
+
+      proxy(this, '_data', keys[i]);
+    }
   }
   Myvue.prototype.mount = function() {
     this.render = this.createRenderFn();
