@@ -55,7 +55,11 @@
       },
       set(newValue) {
         console.log(`设置o的属性 ${key} 为${newValue}`)
-        value = newValue;
+        if (typeof newValue === 'object' && newValue !== null) {
+          value = reactify(newValue);
+        } else {
+          value = newValue;
+        }
         that.mountComponent();
       }
     })
@@ -249,7 +253,8 @@
         firstName: 'wang',
         lastName: 'wenyin'
       },
-      age: 18
+      age: 18,
+      hobbies: [{ name: 'reading' }, { name: 'hiking' }]
     }
   })
 </script>
