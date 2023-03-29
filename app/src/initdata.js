@@ -24,6 +24,10 @@ ARRAY_METHOD.forEach(METHOD => {
 
 function defineReactive(target, key, value, enumerable) {
   const that = this;
+
+  if ( typeof value === 'object' && value != null ) {
+    observe(value);
+  }
   Object.defineProperty(target, key, {
     configurable: true,
     enumerable: !!enumerable,
@@ -39,7 +43,8 @@ function defineReactive(target, key, value, enumerable) {
       }
       value = newValue;
 
-      that.mountComponent();
+      // 临时处理,避免报错（数组还没参与页面渲染）
+      typeof that.mountComponent === 'function' && that.mountComponent();
     }
   })
 }
@@ -79,7 +84,7 @@ Myvue.prototype.initData = function () {
   // 遍历 this._data 的成员, 将 属性转换为响应式 ( 上 ), 将 直接属性, 代理到 实例上
   let keys = Object.keys(this._data);
 
-  // 临时方法处理myvue的响应式
+  // 响应式话
   observe(this._data, this);
 
   // 代理
