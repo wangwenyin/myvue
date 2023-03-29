@@ -14,7 +14,7 @@ ARRAY_METHOD.forEach(METHOD => {
     console.log(`调用的拦截的${METHOD}方法`);
     // 将数据进行响应式话
     for (const item of arguments) {
-      reactify(item);
+      observe(item); // 这里还是有一个问题, 在引入 Watcher 后解决
     }
     // 再调用原来的方法
     const res = Array.prototype[METHOD].apply(this, arguments);
@@ -34,32 +34,29 @@ function defineReactive(target, key, value, enumerable) {
     set(newValue) {
       console.log(`设置o的属性 ${key} 为${newValue}`)
       if (typeof newValue === 'object' && newValue !== null) {
-        value = reactify(newValue);
-      } else {
-        value = newValue;
+        // 将重新赋值的数据变成响应式的
+        observe(newValue);
       }
+      value = newValue;
+
       that.mountComponent();
     }
   })
 }
 
-function reactify(o, vm) {
-  const keys = Object.keys(o);
-  for (const key of keys) {
-    const value = o[key];
-    // 判断value是否是引用类型（数组：遍历后再判读类型）
-    if (Array.isArray(value)) {
-      value.__proto__ = array_method;
-      for (const item of value) {
-        reactify(item, vm)
-      }
-    } else {
-      // 对象或值类型
-      if (typeof value === 'object' && value !== null) {
-        reactify(value, vm);
-      } else {
-        defineReactive.call(vm, o, key, value, true);
-      }
+/** 将对象 o 变成响应式, vm 就是 vue 实例, 为了在调用时处理上下文 */
+function observe( obj, vm ) {
+  // 之前没有对 obj 本身进行操作, 这一次就直接对 obj 进行判断
+  if ( Array.isArray( obj ) ) {
+    obj.__proto__ = array_method;
+    for ( let i = 0; i < obj.length; i++ ) {
+      observe( obj[ i ] ); // 递归处理每一个数组元素
+    }
+  } else {
+    let keys = Object.keys( obj );
+    for ( let i = 0; i < keys.length; i++ ) {
+      let prop = keys[ i ]; // 属性名
+      defineReactive.call( vm, obj, prop, obj[ prop ], true );
     }
   }
 }
@@ -83,7 +80,7 @@ Myvue.prototype.initData = function () {
   let keys = Object.keys(this._data);
 
   // 临时方法处理myvue的响应式
-  reactify(this._data, this);
+  observe(this._data, this);
 
   // 代理
   for (let i = 0; i < keys.length; i++) {
